@@ -135,12 +135,12 @@ enableServerPlugins: true      # ⚠ 默认是 false，必须改成 true
 <酒馆>/public/scripts/extensions/third-party/hitOpt/scripts/install-server.bat
 ```
 
-- **Windows**：把**酒馆根目录**（里面有 `config.yaml` 的那一层）**拖到那个 `.bat` 上**。
-  点进那个文件夹，你会看到它长这样：
+- **Windows**：把**酒馆根目录**拖到那个 `.bat` 上。不用另开窗口 ——
+  就照下面这样，在地址栏里**按住 `SillyTavern` 那一级往左下方拖**，拖到 `install-server.bat` 上松手：
 
-![install-server.bat](docs/install-bat.png)
+![把地址栏里的 SillyTavern 拖到 install-server.bat 上](docs/install-bat.png)
 
-  拖上去松手 → 弹出一个黑窗口 → 它自己建好 `<酒馆>/plugins/hitopt-git/` 并把两个文件放进去
+  松手后会弹出一个黑窗口，它自己建好 `<酒馆>/plugins/hitopt-git/` 并把两个文件放进去
   （**只拷这两个文件，不会动你的任何记录**）。
 - **macOS / Linux**：手动把本仓库 `server/` 里的两个文件拷进 `<酒馆>/plugins/hitopt-git/`：
 
