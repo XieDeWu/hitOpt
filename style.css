@@ -105,3 +105,38 @@
 
 .hlg-dim { opacity: .7; }
 .hlg-mono { font-family: ui-monospace, Consolas, monospace; }
+
+/* ── 「未接通」时那块新手教程 ──────────────────────────────────────────────
+   ★ 2026-09-25（见 `index.js` 的 HLG_INSTALL_HELP）：服务端没装时，把"怎么装"直接写在面板里。
+   ⚠ 只在没接上时画（调用点判 `lastStatus?.ok`）—— 装好了它就一个字都不占。
+   ⚠ 只加这几条新规则，`.hlg-status` 那一套（圆角底/内边距/行高）一个字没动。 */
+.hlg-help {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--SmartThemeBorderColor, rgba(128, 128, 128, .45));
+    border-radius: 0 6px 6px 0;
+    background: rgba(128, 128, 128, .10);
+    font-size: 11.5px;
+    line-height: 1.8;
+}
+.hlg-help ol { margin: 6px 0; padding-left: 20px; }
+.hlg-help li { margin: 5px 0; }
+.hlg-help code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: rgba(128, 128, 128, .18);
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 11px;
+}
+/* 那条"从哪点到哪"的路径链：单独一块底色，让六个箭头一眼能顺着读 */
+.hlg-help-path {
+    margin: 4px 0 2px;
+    padding: 5px 8px;
+    border-radius: 5px;
+    background: rgba(128, 128, 128, .14);
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 11px;
+    word-break: break-all;
+}
+.hlg-help .hlg-copy { margin-left: 8px; padding: 2px 8px; font-size: 11px; }
+.hlg-help-note { margin-top: 8px; opacity: .72; }

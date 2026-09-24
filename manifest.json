@@ -6,7 +6,7 @@
     "js": "index.js",
     "css": "style.css",
     "author": "XieDeWu",
-    "version": "7.3.5",
+    "version": "7.3.6",
     "homePage": "https://github.com/XieDeWu/hitOpt",
     "auto_update": true,
     "_hooks_note": "值的写法核过酒馆源码 public/scripts/extensions.js L385-422：值 = 入口 JS 导出的函数名，酒馆会 await 它。这里只挂两个（install = 装完那一刻 / activate = 每次被激活）—— 挂不着的钩子就是永远跑不到的死代码。",

@@ -57,7 +57,7 @@ const MODULE_NAME = 'hitOpt';
  *   ⚠ 纪律不变：前两段（`7.2`）**只有用户亲口说才能动**；我自己只能改第三段。
  *   ⚠ 那个常量名是历史遗留（改名要动构建链 `tools/parts/__var_*.js` ＋ `tools/plan.json`），
  *     但**它的值就是本插件的版本号**（抬头与面板报的 `cli=` 读的正是它）⇒ 升版本时与 `APP_VERSION` 一起改。 */
-const APP_VERSION = 'v7.3.5';
+const APP_VERSION = 'v7.3.6';
 /* ★ 2026-09-25【服务端那一半够不够新 —— 让它自己说】我提议、用户答"可以"。
  *   为什么非有这个不可：服务端**不会自动更新** —— 酒馆的 `enableServerPluginsAutoUpdate`
  *   只对 **git 仓库**生效（`src/plugin-loader.js` L259-267：`checkIsRepo` 不通过就 `continue`），
@@ -255,6 +255,44 @@ function cell(c, k) {
     return v == null || v === '' ? '—' : String(v);
 }
 
+/* ★★ 2026-09-25【没接通时，把"怎么装服务端"直接写进面板】用户三句原话：
+ *   "光提示不够啊 我自己都不知道扩展目录在哪" ／ "记录服务哪里" ／
+ *   "建议这个 div 里面放第二行信息（仅在未连接 hitopt-git 时出现）"
+ *   ＋ "xxxx如何安装服务端插件之类的新手教程 我自己都不会别说别人了"。
+ *   为什么非要有：扩展是**两半**，而"服务端那一半要手动放一次"对新手**完全无从下手** ——
+ *   原来的提示只写"找到本扩展目录里的 scripts/install-server.bat"，
+ *   可**"扩展目录在哪"**恰恰是他不知道的那一件事（那是酒馆内部的目录结构，不是他建的）。
+ *   ⇒ 这里给出**从酒馆根目录出发的完整相对路径**，并把"酒馆根目录"解释成
+ *     **"你双击启动酒馆的那个文件所在的文件夹"** —— 这句话谁都能对上号。
+ *   ⛔ 不写死任何盘符路径（别人的机器不一样；写死了就是错的）。
+ *   ⚠ 只在**未接通**时画（调用点判 `lastStatus?.ok`）：装好了它就一个字都不占。
+ *   ⚠ 它**不进 bits** —— 上面那一行是用 ` ｜ ` 连接的，教程块不能被那样连。 */
+const HLG_INSTALL_HELP = '<div class="hlg-help">'
+    + '<b>服务端插件还没装</b> —— 这个扩展是两半，"记录服务"就是缺的那一半'
+    + '（它负责把每一轮<b>真发出去的那份请求</b>存下来，面板上的数才算得出来）。'
+    + '<ol>'
+    + '<li>打开你的 <b>酒馆文件夹</b>：<b>你双击启动酒馆的那个文件，就在这个文件夹里</b> —— '
+    + '里面能看到 <code>config.yaml</code> 和 <code>plugins</code>。</li>'
+    + '<li>从它开始一路点进去，找到这个文件：'
+    + '<div class="hlg-help-path">public &rarr; scripts &rarr; extensions &rarr; third-party &rarr; '
+    + '<b>hitOpt</b> &rarr; scripts &rarr; <b>install-server.bat</b>'
+    + '<button class="hlg-btn hlg-copy" type="button" data-hlg-copy="public\\scripts\\extensions\\third-party\\hitOpt\\scripts" '
+    + 'title="复制这段路径，粘到文件资源管理器的地址栏里回车">📋 复制路径</button></div></li>'
+    + '<li>把第 1 步那个<b>酒馆文件夹本身</b>，用鼠标<b>拖到 install-server.bat 上</b>松手 —— '
+    + '会弹出一个黑窗口，它自己会把服务端放进 <code>plugins/</code>'
+    + '（<b>只拷两个文件，不会动你的任何记录</b>）。</li>'
+    + '<li>确认 <code>config.yaml</code> 里有 <code>enableServerPlugins: true</code>'
+    + '（默认是 <code>false</code>，要改成 <code>true</code>），然后<b>重启酒馆</b>。</li>'
+    + '</ol>'
+    + '装好之后这一行会变成绿色的「● 已连接」，这段说明自动消失。'
+    + '<div class="hlg-help-note">'
+    + '⚠ 为什么不给一个"点一下就自动打开文件夹"的链接：<b>浏览器不许网页打开你电脑上的本地文件夹</b>'
+    + '（安全限制，所有浏览器都一样），这一步只能你手动点。'
+    + '<br>不是 Windows？把仓库 <code>server/</code> 里的 <code>index.mjs</code> '
+    + '和 <code>wiretap.mjs</code> 手动拷进 <code>&lt;酒馆&gt;/plugins/hitopt-git/</code> 就行 —— '
+    + '仓库首页的「安装」一节有完整说明。</div>'
+    + '</div>';
+
 function statusHtml() {
     const bits = [];
 
@@ -290,7 +328,11 @@ function statusHtml() {
             .concat(chats.map((c) => `<option value="${esc(c)}"${settings.pick === c ? ' selected' : ''}>${esc(c)}</option>`));
         bits.push(`<select id="hlg-pick" class="hlg-btn" style="max-width:260px">${opts.join('')}</select>`);
     }
-    return bits.join(' ｜ ');
+    /* ★ 2026-09-25【未接通 ⇒ 整行后面再挂一块"怎么装服务端"的新手教程】见 HLG_INSTALL_HELP 那段。
+     *   ⚠ 它**不进 bits** —— 上面那一行是用 ` ｜ ` 连接的，教程块被那样连起来就没法读了。
+     *   ⚠ 接通了就是空串（用户点名的"仅在未连接时出现"）。
+     *   ⚠ 这条是**验收钉子**（`check/srv_gate_test.mjs` ⑱）钉住的：常量写了不接线 ⇒ 当场红。 */
+    return bits.join(' ｜ ') + (lastStatus?.ok ? '' : HLG_INSTALL_HELP);
 }
 
 /* ★ 2026-09-24【第二行：费用条】—— 用户原话："**换个费用行位置 你直接跟第一轮的div美化一样，放第二行**"，
@@ -466,6 +508,32 @@ try {
                 setTimeout(() => { void refresh('recalc'); }, 400);
             })
             .catch((e) => { b.textContent = '重算失败'; log('重算失败', e); });
+    });
+} catch (_) { /* 绑不上也不影响别的 */ }
+
+/* ★ 2026-09-25【「复制路径」那个按钮的委托点】—— 同样不用 inline onclick（本项目禁它），走 document 委托：
+ *   `data-hlg-copy` —— 把一段路径复制到剪贴板（"未接通"那条教程里的「📋 复制路径」）。
+ *   ⚠ `navigator.clipboard` 只在安全上下文可用；酒馆在 127.0.0.1 上跑，浏览器算它是安全的 ⇒ 可用。
+ *     **失败就如实说"请手动选中复制"**，不假装成功。
+ *   ⚠ 用户当天对"点一下就自动打开文件夹"（服务端执行 explorer 那条路）说了 **"那算了"** ⇒ **不做**，
+ *     所以这里**只有复制这一个分支**（⛔ 不留"永远跑不到"的死代码）。 */
+try {
+    document.addEventListener('click', (ev) => {
+        const t = ev.target;
+        if (!t || typeof t.closest !== 'function') return;
+        const cp = t.closest('[data-hlg-copy]');
+        if (cp) {
+            ev.preventDefault();
+            const txt = String(cp.getAttribute('data-hlg-copy') || '');
+            const back = () => { cp.textContent = '📋 复制路径'; };
+            const done = (okk) => { cp.textContent = okk ? '✓ 已复制' : '⚠ 请手动选中复制'; setTimeout(back, 1800); };
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(txt).then(() => done(true), () => done(false));
+                } else { done(false); }
+            } catch (_) { done(false); }
+            return;
+        }
     });
 } catch (_) { /* 绑不上也不影响别的 */ }
 
