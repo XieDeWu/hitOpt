@@ -57,7 +57,17 @@ const MODULE_NAME = 'hitOpt';
  *   ⚠ 纪律不变：前两段（`7.2`）**只有用户亲口说才能动**；我自己只能改第三段。
  *   ⚠ 那个常量名是历史遗留（改名要动构建链 `tools/parts/__var_*.js` ＋ `tools/plan.json`），
  *     但**它的值就是本插件的版本号**（抬头与面板报的 `cli=` 读的正是它）⇒ 升版本时与 `APP_VERSION` 一起改。 */
-const APP_VERSION = 'v7.3.4';
+const APP_VERSION = 'v7.3.5';
+/* ★ 2026-09-25【服务端那一半够不够新 —— 让它自己说】我提议、用户答"可以"。
+ *   为什么非有这个不可：服务端**不会自动更新** —— 酒馆的 `enableServerPluginsAutoUpdate`
+ *   只对 **git 仓库**生效（`src/plugin-loader.js` L259-267：`checkIsRepo` 不通过就 `continue`），
+ *   而我们是用 `install-server.bat` 拷进去的**两个文件**。⇒ 用户忘了重跑那个 bat，
+ *   就会**一直用着旧服务端还以为是最新的**：新路由、新字段一个都不生效，而面板上**看不出来**。
+ *   判据：服务端 `/status` 报的 `v` 就是它的 `ROUTE_V`（本项目纪律 = 服务端动一次涨一次）
+ *   ⇒ 客户端声明"我这一版至少要 ≥ N"，比它小就是旧的。
+ *   ⚠ `REQUIRED_SRV_ROUTE` 与 `index.mjs` 的 `ROUTE_V` **必须相等**，有验收钉子钉着
+ *     （`check/srv_gate_test.mjs` ⇒ 服务端涨了这里忘了跟，钉子是红的，不会悄悄漂移）。 */
+const REQUIRED_SRV_ROUTE = 57;
 /* ★ 2026-09-24（第二十三批）：记录服务的挂载名 —— 服务端 `info.id` 从 `horae-git` 改成 `hitopt-git`。
  *   候选**新的在前、旧的兜底**（服务端模块只在酒馆启动时加载 ⇒ 没重启时旧路由还在）。 */
 const LEDGER_IDS = ['hitopt-git', 'horae-git'];
@@ -226,7 +236,20 @@ function cell(c, k) {
     if (k === '__h') return num(c?.usage?.hit);
     if (k === '__m') return num(c?.usage?.miss);
     if (k === '__pct') return pct(c?.usage?.hit, c?.usage?.promptTok);
-    if (k === 'verCli') return String(c?.verCli || '—');
+    /* ★ 2026-09-25（用户："这里的 cli 记得附上 srv 啊"）：这一格原来只报**客户端**那一半，
+     *   而记录抬头上本来就写着两个（`| 版本 cli=v7.3.3 srv=57 tok=sent`）⇒ 只显示一半，
+     *   出问题时对不出"这一轮到底是哪个**组合**写下的"。现在照抬头那一格的同款格式拼成
+     *   `v7.3.3 · srv57`（与面板右上角 `APP_VERSION · srvNN` 同一个写法）。
+     *   ⚠ 老记录可能没有 srv 那一段（`srv=` 是 v6.24.69 才进抬头的）⇒ **有几个报几个**：
+     *     缺的那个不编一个出来，两个都没有才写 `—`（全项目通用的"没有这个数"记号）。 */
+    if (k === 'verCli') {
+        const cli = String(c?.verCli || '').trim();
+        const srvRaw = c?.verSrv;
+        const srv = (srvRaw === null || srvRaw === undefined || String(srvRaw).trim() === '')
+            ? '' : 'srv' + String(srvRaw).trim();
+        if (!cli && !srv) return '—';
+        return [cli, srv].filter(Boolean).join(' · ');
+    }
     const v = c?.[k];
     if (typeof v === 'number') return num(v);
     return v == null || v === '' ? '—' : String(v);
@@ -398,8 +421,14 @@ async function refresh(why = '') {
     busy = true;
     try {
         await probe();
-        if (lastStatus?.ok) await fetchLog();
-        else lastLog = null;
+        if (lastStatus?.ok) {
+            /* ★ 2026-09-25【服务端旧了要自己说】—— 判据与来由见 `REQUIRED_SRV_ROUTE` 那一段。
+             *   只在**探到了服务端**时判：探不到（压根没装）是 `_tipIfServerMissing` 那条路的活，
+             *   两条不重叠，免得"没装"被说成"旧了"、或者一次弹两条。
+             *   ⚠ 它自己只弹一次（`_srvStaleTipShown`），所以放在这个每次刷新都跑的地方是安全的。 */
+            try { _tipIfServerStale(lastStatus); } catch (_) { /* 提示失败绝不影响刷新 */ }
+            await fetchLog();
+        } else lastLog = null;
     } catch (e) {
         lastErr = e?.message || String(e);
         log('刷新失败', why, lastErr);
@@ -550,6 +579,8 @@ jQuery(async () => {
 
 /** 这一页已经提示过了吗（activate 可能被反复调）。 */
 let _serverTipShown = false;
+/** 上面那条的姊妹：服务端**旧了**只说一次（见 `_tipIfServerStale`）。 */
+let _srvStaleTipShown = false;
 
 /** 服务端在不在 —— 走那条只读 /status（不要 CSRF、不写任何东西）。
  *  ⚠ 候选名与 LEDGER_IDS 同一套（服务端是酒馆启动时加载的，没重启时旧名字还在）。
@@ -581,9 +612,9 @@ async function _tipIfServerMissing() {
     try {
         if (await _serverAlive()) return;          // 装好了 ⇒ 永远闭嘴
         _serverTipShown = true;
-        const msg = 'hitOpt 还差一步：**服务端插件没装**。\n'
+        const msg = 'hitOpt 还差一步：服务端插件没装。\n'
             + '① 找到本扩展目录里的 scripts/install-server.bat；\n'
-            + '② 把**酒馆根目录**（有 config.yaml 那一层）拖到那个 bat 上；\n'
+            + '② 把「酒馆根目录」（有 config.yaml 那一层）拖到那个 bat 上；\n'
             + '③ 重启酒馆。装好后这个提示不再出现。';
         /* 有 toastr 就用它（酒馆自带，右上角），没有就只写控制台 ——
          * 绝不因为"提示不出来"而抛错（钩子里抛错会牵连酒馆的扩展加载）。 */
@@ -599,12 +630,49 @@ async function _tipIfServerMissing() {
     }
 }
 
+/** 服务端那一半够不够新。**纯函数**（验收直接跑它，不在测试里另抄一套判据）。
+ *  返回：`'ok'` 够新 ｜ `'old'` 旧了 ｜ `'unknown'` 它压根没报版本（＝比旧还旧）。
+ *  ⚠ 这里**不许**写 `Number(status?.v)`：`Number(null) === 0`，那个 0 会被判成"旧得离谱"，
+ *    而真相是"拿不到这个数" —— 两种情况的提示词不一样。本项目在 `Number(null)` 上栽过四次。 */
+function _srvStaleKind(status, need = REQUIRED_SRV_ROUTE) {
+    const raw = status?.v;
+    const v = (typeof raw === 'number') ? raw
+        : (typeof raw === 'string' && raw.trim() !== '') ? Number(raw) : NaN;
+    if (!Number.isFinite(v)) return 'unknown';
+    return v < need ? 'old' : 'ok';
+}
+
+/** 服务端旧了就说一次（一个页面会话最多一次）—— 与上面 `_tipIfServerMissing` 同一套节制。
+ *  ⚠ 与 `_tipIfServerMissing` 分工不重叠：那条管"压根没装"（探不到就是它的活），
+ *    这条只管"装着、但是旧的"（`/status` 回得来、版本号不够）。 */
+function _tipIfServerStale(status) {
+    if (_srvStaleTipShown) return;
+    const kind = _srvStaleKind(status);
+    if (kind === 'ok') return;
+    _srvStaleTipShown = true;
+    const got = (kind === 'unknown') ? '（旧到连版本号都不报）' : `（srv${status.v}）`;
+    /* ⚠ 这里**不许**用 Markdown 的 `**加粗**` —— toastr 不认识它，会把两个星号**原样显示**出来
+     *   （真机截图实测过：屏幕上就是「**服务端那一半是旧版**」）。强调改用中文书名号。 */
+    const msg = `hitOpt 的服务端那一半是旧版${got} —— 本版扩展要 srv${REQUIRED_SRV_ROUTE} 以上，`
+        + '新功能不会生效。\n'
+        + '请把「酒馆根目录」再拖一次下面这个脚本，然后重启酒馆：\n'
+        + '扩展目录里 scripts/install-server.bat';
+    /* 有 toastr 就用它（酒馆自带，右上角），没有就只写控制台 ——
+     * 绝不因为"提示不出来"而抛错（它跑在刷新链里，抛错会连累整张面板）。 */
+    try {
+        if (typeof toastr !== 'undefined' && toastr && toastr.warning) {
+            toastr.warning(msg, 'hitOpt', { timeOut: 20000, extendedTimeOut: 10000 });
+        } else {
+            log('[hitOpt] ' + msg);
+        }
+    } catch (_) { try { log('[hitOpt] ' + msg); } catch (__) { /* 连日志都写不出来就算了 */ } }
+}
+
 /** 酒馆的 install 钩子：装完那一刻。 */
 export async function onInstall() {
     try { log('[hitOpt] 扩展已安装（hook: install）'); } catch (_) { /* 日志失败不影响任何事 */ }
     await _tipIfServerMissing();
 }
-
 /** 酒馆的 activate 钩子：每次被激活（重开酒馆 / F5）。 */
 export async function onActivate() {
     await _tipIfServerMissing();

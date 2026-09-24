@@ -334,7 +334,7 @@ const DEFAULT_SETTINGS = {
  *   ⇒ 值改成 hitOpt 的版本，**与 `index.js` 的 `APP_VERSION` 保持一致**（升版本时两处一起改）。
  *   ⚠ 常量名是历史遗留（改它要动构建链：`tools/parts/__var_*.js` ＋ `tools/plan.json`），
  *     留待下一步统一改名 —— ⛔ 但在那之前**值不许再对不上**。 */
-const HORAE_CACHE_PATCH = 'v7.3.4';
+const HORAE_CACHE_PATCH = 'v7.3.5';
 
 /* @18536 */
 const HORAE_HOIST_OFF = true;
