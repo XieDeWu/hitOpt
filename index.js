@@ -57,7 +57,7 @@ const MODULE_NAME = 'hitOpt';
  *   ⚠ 纪律不变：前两段（`7.2`）**只有用户亲口说才能动**；我自己只能改第三段。
  *   ⚠ 那个常量名是历史遗留（改名要动构建链 `tools/parts/__var_*.js` ＋ `tools/plan.json`），
  *     但**它的值就是本插件的版本号**（抬头与面板报的 `cli=` 读的正是它）⇒ 升版本时与 `APP_VERSION` 一起改。 */
-const APP_VERSION = 'v7.3.6';
+const APP_VERSION = 'v7.3.7';
 /* ★ 2026-09-25【服务端那一半够不够新 —— 让它自己说】我提议、用户答"可以"。
  *   为什么非有这个不可：服务端**不会自动更新** —— 酒馆的 `enableServerPluginsAutoUpdate`
  *   只对 **git 仓库**生效（`src/plugin-loader.js` L259-267：`checkIsRepo` 不通过就 `continue`），
@@ -130,6 +130,11 @@ async function api(pathname, timeoutMs = 8000) {
     const bases = [...new Set(ids)].filter(Boolean).map((x) => `/api/plugins/${x}`);
     if (!bases.length) throw new Error('没有可用的记录服务地址');
 
+    /* ★ 2026-09-25：报错必须报**第一个**候选的失败，不是最后一个 ——
+     *   候选表是 [hitopt-git, horae-git]（新名在前、旧名兜底），而"最后一个"永远是那个**旧挂载名**
+     *   ⇒ 面板会写「未接通 /api/plugins/horae-git/status → HTTP 404」（用户 2026-09-25 的截图就是这样），
+     *     看的人会以为该去装 horae-git —— 而真正要装的是 hitopt-git。
+     *   ⚠ 用户报的是"漏了两个提示没改"，这一处是我从同一张截图里顺手看出来的。 */
     let err = '';
     for (const base of bases) {
         const ctl = new AbortController();
@@ -137,11 +142,11 @@ async function api(pathname, timeoutMs = 8000) {
         try {
             const r = await fetch(base + pathname, { signal: ctl.signal });
             clearTimeout(timer);
-            if (!r.ok) { err = `${base}${pathname} → HTTP ${r.status}`; continue; }
+            if (!r.ok) { if (!err) err = `${base}${pathname} → HTTP ${r.status}`; continue; }
             return await r.json();
         } catch (e) {
             clearTimeout(timer);
-            err = `${base}${pathname} → ${e?.name === 'AbortError' ? '超时' : (e?.message || e)}`;
+            if (!err) err = `${base}${pathname} → ${e?.name === 'AbortError' ? '超时' : (e?.message || e)}`;
         }
     }
     throw new Error(err || '请求失败');
@@ -278,9 +283,13 @@ const HLG_INSTALL_HELP = '<div class="hlg-help">'
     + '<b>hitOpt</b> &rarr; scripts &rarr; <b>install-server.bat</b>'
     + '<button class="hlg-btn hlg-copy" type="button" data-hlg-copy="public\\scripts\\extensions\\third-party\\hitOpt\\scripts" '
     + 'title="复制这段路径，粘到文件资源管理器的地址栏里回车">📋 复制路径</button></div></li>'
-    + '<li>把第 1 步那个<b>酒馆文件夹本身</b>，用鼠标<b>拖到 install-server.bat 上</b>松手 —— '
-    + '会弹出一个黑窗口，它自己会把服务端放进 <code>plugins/</code>'
-    + '（<b>只拷两个文件，不会动你的任何记录</b>）。</li>'
+    + '<li><b>双击</b>那个 <code>install-server.bat</code> —— 扩展就装在酒馆里，'
+    + '脚本会<b>自己往上找到酒馆目录</b>，把服务端放进 <code>plugins/</code>'
+    + '（<b>只拷两个文件，不会动你的任何记录</b>）。'
+    + '窗口会<b>停住等你按一下键</b>：成功、失败、以及它最后用的是哪个目录都打在屏幕上，'
+    + '不会一闪而过。</li>'
+    + '<li>（万一它说"没能自动认出酒馆目录" —— 只有扩展不在酒馆里时才会：'
+    + '把第 1 步那个<b>酒馆文件夹本身</b>拖到 <code>install-server.bat</code> 上松手。）</li>'
     + '<li>确认 <code>config.yaml</code> 里有 <code>enableServerPlugins: true</code>'
     + '（默认是 <code>false</code>，要改成 <code>true</code>），然后<b>重启酒馆</b>。</li>'
     + '</ol>'
@@ -682,7 +691,8 @@ async function _tipIfServerMissing() {
         _serverTipShown = true;
         const msg = 'hitOpt 还差一步：服务端插件没装。\n'
             + '① 找到本扩展目录里的 scripts/install-server.bat；\n'
-            + '② 把「酒馆根目录」（有 config.yaml 那一层）拖到那个 bat 上；\n'
+            + '② 双击它 —— 扩展就装在酒馆里，脚本会自己找到酒馆目录；\n'
+            + '（万一它说"认不出酒馆目录"，再把「酒馆根目录」拖到它上面）\n'
             + '③ 重启酒馆。装好后这个提示不再出现。';
         /* 有 toastr 就用它（酒馆自带，右上角），没有就只写控制台 ——
          * 绝不因为"提示不出来"而抛错（钩子里抛错会牵连酒馆的扩展加载）。 */

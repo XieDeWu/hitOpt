@@ -86,7 +86,7 @@ const TEMPLATE_PER_MSG_TOK = 2;
    不参与任何判据（搬过来只为让那一格的字与源文件一致）。 */
 /* 源文件 @18532：HORAE_CACHE_PATCH —— ⚠ 名字是历史遗留，**值是 hitOpt 自己的版本**（用户：
  *   "没有HORAE_CACHE_PATCH，我们只有独立插件hitOpt"）。只出现在逐行的算法标注文案里。 */
-const HORAE_CACHE_PATCH = 'v7.3.6';
+const HORAE_CACHE_PATCH = 'v7.3.7';
 
 /* 源文件 @13250 / @13251：PANEL_FRESH_MS = 800 与 _panelForceRenderAt = 0。
    后者只由 Horae 抽屉的打开路径写（那个路径没搬）=> 在本模块里它恒为 0
