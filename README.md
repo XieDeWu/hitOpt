@@ -135,13 +135,19 @@ enableServerPlugins: true      # ⚠ 默认是 false，必须改成 true
 <酒馆>/public/scripts/extensions/third-party/hitOpt/scripts/install-server.bat
 ```
 
-- **Windows**：把**酒馆根目录**拖到那个 `.bat` 上。不用另开窗口 ——
-  就照下面这样，在地址栏里**按住 `SillyTavern` 那一级往左下方拖**，拖到 `install-server.bat` 上松手：
+- **Windows：双击它就行** —— 不用拖、不用开命令行。
 
-![把地址栏里的 SillyTavern 拖到 install-server.bat 上](docs/install-bat.png)
+  扩展既然装在酒馆里，脚本会**自己从它的位置往上找到酒馆根目录**，建好
+  `<酒馆>/plugins/hitopt-git/` 并把两个文件放进去（**只拷这两个文件，不会动你的任何记录**）。
 
-  松手后会弹出一个黑窗口，它自己建好 `<酒馆>/plugins/hitopt-git/` 并把两个文件放进去
-  （**只拷这两个文件，不会动你的任何记录**）。
+  窗口会**停住等你按一下键**，不会一闪而过；成功、失败、以及它最后用的到底是哪个目录，
+  都打在屏幕上，同时也记一份到 `%TEMP%\hitopt-install.log`。
+
+  > **什么时候双击不管用**：这个扩展**不是**装在酒馆里的（比如你手动 clone 到了别处）。
+  > 那就把**酒馆根目录**拖到那个 `.bat` 上 —— 在地址栏里**按住 `SillyTavern` 那一级往左下方拖**，
+  > 拖到 `install-server.bat` 上松手：
+  >
+  > ![把地址栏里的 SillyTavern 拖到 install-server.bat 上](docs/install-bat.png)
 - **macOS / Linux**：手动把本仓库 `server/` 里的两个文件拷进 `<酒馆>/plugins/hitopt-git/`：
 
 ```
@@ -171,7 +177,7 @@ enableServerPlugins: true      # ⚠ 默认是 false，必须改成 true
 - **服务端**：⚠ **不会自动更新**。
   酒馆那个"自动更新服务端插件"只对 **git 仓库**生效 —— 加载器对不是仓库的目录是**直接跳过**的
   （`src/plugin-loader.js` 里 `checkIsRepo` 不通过就 `continue`），而服务端是**拷进去的两个文件**。
-  ⇒ **每次扩展更新之后，把 ③ 再做一遍**（再拖一次那个 `.bat`），然后重启酒馆。
+  ⇒ **每次扩展更新之后，把 ③ 再做一遍**（再双击一次那个 `.bat`），然后重启酒馆。
 - 💡 **忘了也没关系**：v7.3.5 起，扩展发现服务端版本落后会**自己弹一条提示**告诉你该重跑那个 bat。
 
 ---
@@ -208,6 +214,11 @@ A：你的接口没返回缓存命中字段。那套字段（`prompt_cache_hit_t
 **Q：找不到 `install-server.bat`。**
 A：它在**扩展目录**里，不在酒馆根目录 ——
 `<酒馆>/public/scripts/extensions/third-party/hitOpt/scripts/`。
+
+**Q：双击了，但窗口说"没能自动认出酒馆目录"。**
+A：说明这个扩展不在它要装的那个酒馆里面（手动 clone 到别处时就是这样）。
+把**酒馆根目录**（里面有 `config.yaml` 和 `plugins` 那一层）拖到那个 `.bat` 上即可。
+脚本会把它"往上找过哪些层"打在屏幕上 —— 出错不用猜。
 
 **Q：它会改我的世界书 / 预设 / 角色卡吗？**
 A：不会。它动的是**发出去那一刻的请求体**（池化与重排，省钱的原理就在这儿），
