@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "//": "★ 只给 node 看的（浏览器按 URL 解析模块，不看这个文件）。有它，tools/ 与 check/ 才能 import 真的算法本体（而不是在测试里另抄一份判据）。"
+}

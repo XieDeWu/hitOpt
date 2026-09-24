@@ -1,0 +1,107 @@
+/* hitOpt（命中优化）—— 独立扩展的样式。
+   全部挂在 .hlg- / #hlg_ 前缀下，不碰酒馆与 Horae 的任何类名。
+
+   顶栏抽屉的**外壳**（定位 / 宽度 / 展开动画 / 背景）由酒馆自己的
+   .drawer 与 .drawer-content 负责（public/style.css），这里一个字都不重复设；
+   本文件只管内容区内部的排版。 */
+
+/* ── 顶栏抽屉的内容区 ─────────────────────────────────────────────────── */
+#hlg_drawer_content {
+    padding: 4px 10px 12px;
+    font-size: 12.5px;
+    line-height: 1.65;
+}
+
+#hlg_drawer_content .drawer-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 2px 7px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, rgba(128, 128, 128, .3));
+}
+
+.hlg-title { font-size: 15px; font-weight: 600; letter-spacing: .3px; }
+.hlg-title i { opacity: .8; margin-right: 5px; }
+.hlg-ver {
+    margin-left: auto;
+    opacity: .55;
+    font-size: 11px;
+    font-family: ui-monospace, Consolas, monospace;
+}
+
+.hlg-tools { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 7px; }
+
+/* ★ 2026-09-25【工具行左侧那条设计说明】用户圈定的位置：按钮左边那片空白。
+   ⚠ **只加这一条新规则** —— 上面 `.hlg-tools` 那行与别处的样式一个字都没动
+   （`margin-right:auto` 只是让说明自己贴左，按钮照旧被 `justify-content:flex-end` 推到右边）；
+   ⛔ 别给它定宽，面板变窄时它要能自己换行。 */
+.hlg-tools .hlg-hint {
+    margin-right: auto;
+    min-width: 0;
+    padding-right: 10px;
+    font-size: 11px;
+    line-height: 1.6;
+    opacity: .72;
+    cursor: help;
+    user-select: text;
+}
+.hlg-tools .hlg-hint i { margin-right: 5px; opacity: .85; }
+.hlg-tools .hlg-hint b { font-weight: 600; opacity: .95; }
+
+/* ⚠⚠ 上面那条说明是**长文本**，一旦面板窄到放不下，flex 会干两件坏事（真无头 Chrome 实测：
+   面板内容宽 632px 时，两个按钮被横向压到 42px ⇒「原始」两个字**折成竖排**；同时被纵向
+   拉伸到 46px）。用户当场叮嘱过："不要乱动其他的样式 你只是加个tips而已" ⇒ 按钮绝不许被这条
+   说明挤变形。下面两条**只在真的放不下时才起作用**；放得下时（`width:941px` 实测过）
+   按钮/工具行/抬头/状态条的矩形与加这条说明之前**逐位相同**。 */
+.hlg-tools { align-items: flex-start; }   /* 按钮贴着行顶 —— 与加这条说明之前**逐位相同**（居中会下移 3px） */
+.hlg-tools .hlg-btn { flex: 0 0 auto; }    /* 不再被说明挤窄（宽度恒等于它自己的内容宽） */
+
+/* ── 状态条 ───────────────────────────────────────────────────────────── */
+.hlg-status {
+    display: block;
+    margin: 0 0 9px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(128, 128, 128, .22));
+    background: var(--SmartThemeBlurTintColor, rgba(128, 128, 128, .12));
+    font-size: 11.5px;
+    line-height: 2;
+    word-break: break-word;
+    user-select: text;
+}
+.hlg-status .hlg-ok { color: #7dd87d; }
+.hlg-status .hlg-bad { color: #e07070; }
+.hlg-status .hlg-dim { opacity: .7; }
+
+/* 状态条里的场次下拉：别把整条撑爆 */
+.hlg-status select { max-width: 300px; }
+
+/* ── 按钮 ─────────────────────────────────────────────────────────────── */
+.hlg-btn {
+    padding: 4px 11px;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(128, 128, 128, .4));
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor, rgba(128, 128, 128, .12));
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+}
+.hlg-btn:hover { filter: brightness(1.25); }
+.hlg-btn:active { transform: translateY(1px); }
+
+/* ── 原始 / 账表 ──────────────────────────────────────────────────────── */
+.hlg-table { overflow: auto; max-height: 62vh; }
+
+.hlg-table table { border-collapse: collapse; font-size: 11.5px; white-space: nowrap; }
+.hlg-table th, .hlg-table td {
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, rgba(128, 128, 128, .25));
+    text-align: right;
+}
+.hlg-table th { position: sticky; top: 0; background: var(--SmartThemeBlurTintColor, #222); z-index: 1; }
+.hlg-table td.hlg-txt { text-align: left; }
+.hlg-table tr:hover td { background: rgba(128, 128, 128, .12); }
+
+.hlg-dim { opacity: .7; }
+.hlg-mono { font-family: ui-monospace, Consolas, monospace; }

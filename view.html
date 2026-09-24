@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>hitOpt · 记录查看</title>
+<!--
+  hitOpt · 记录查看页 —— 面板第 1 列（楼层格）里那**两排**入口的落点
+  （第 5 行：原文↗ 同上轮↗ 池化↗ 输出↗；第 6 行：同轮↗ 跟上轮↗）。
+
+  · mode=doc          「池化」= 主算法池化后、这一轮真发出去那份（服务端铺平后的正文）
+  · mode=doc&src=raw  「原文」= 酒馆组装好、Horae 还没动过的原文（未经池化）
+  · mode=diff         「对比」= 逐行差异（同上轮 / 跟上轮 / 同轮 三颗共用这一页）
+  · mode=res          「输出」= 官方返回原文（按窗口读，带"继续读下一段"）
+
+  ⚠ 页面本身不新造任何服务端接口：每种模式各走一条**只读 GET 路由**
+    （见同目录 view.js 的文件头）。这里只有样式，一行逻辑都没有。
+  ⚠ 脚本用**外链模块**而不是内联 script —— 不赌宿主的 CSP 放不放 inline。
+-->
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: #0f0d16; color: #d8d4e0;
+    font: 12px/1.55 "Consolas", "Menlo", "Microsoft YaHei", monospace;
+  }
+  #bar {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 7px 10px; background: #17131f;
+    border-bottom: 1px solid rgba(128,128,128,.35);
+  }
+  #title { font-size: 13px; font-weight: 600; }
+  #sub { font-size: 11px; opacity: .7; }
+  #raw { margin-left: auto; color: #8fb8ff; text-decoration: underline; font-size: 11px; }
+  #msg { padding: 8px 10px; font-size: 11px; }
+  #msg.dim { opacity: .65; }
+  #msg.bad { color: #e07070; white-space: pre-wrap; }
+  #msg.note { color: #e0c060; white-space: pre-wrap; }
+  #body {
+    margin: 0; padding: 6px 10px 40px;
+    font: inherit; white-space: pre-wrap; word-break: break-word;
+    tab-size: 4;
+  }
+  /* 输出模式：中间那段省略说明 ＋ 末尾那一块（官方 usage 与 [DONE] 在里面）＋ 继续读 */
+  #omit {
+    margin: 0; padding: 6px 10px; font-size: 11px;
+    color: #e0c060; background: rgba(224,192,96,.07);
+    border-top: 1px solid rgba(128,128,128,.25); border-bottom: 1px solid rgba(128,128,128,.25);
+  }
+  #taillabel { padding: 6px 10px 0; font-size: 11px; color: #8fb8ff; opacity: .85; }
+  #tail {
+    margin: 0; padding: 4px 10px 8px;
+    font: inherit; white-space: pre-wrap; word-break: break-word; tab-size: 4;
+  }
+  #morewrap { padding: 0 10px 30px; }
+  #more {
+    font: inherit; font-size: 11px; color: #d8d4e0;
+    background: rgba(128,128,128,.14); border: 1px solid rgba(128,128,128,.4);
+    border-radius: 3px; padding: 3px 10px; cursor: pointer;
+  }
+  #more:disabled { opacity: .6; cursor: default; }
+  /* 差异模式：每一行一个 div，行号两列 + 正文一列（与原来那张差异页同一套读法） */
+  #diff { padding: 4px 0 40px; }
+  .d-row { display: flex; align-items: flex-start; }
+  /* ★★★★★★ 2026-09-24【用户报"无实际功能"的真因 —— ⛔ 这一条别删】
+     `hidden` 属性靠的是浏览器自带样式表里的 `[hidden]{display:none}`，而**作者样式永远压过 UA 样式**
+     ⇒ 上面那句 `.d-row{display:flex}` 一写，`el.hidden = true` 就**完全失效**：
+     条变了颜色、字也变成"已收起"，可**下面的变动行一行不少地照旧显示**（用户截图原话："无实际功能"）。
+     连带 `bar2.hidden = true`（收起时要藏掉的尾条）也一样藏不住。
+     ⚠ 为什么单测没抓到：`check/_fake_dom.mjs` 是纯 DOM 桩、**不实现 CSS** ⇒ `el.hidden === true` 永远成立。
+       这是 v6.24.61「桩比真 DOM 宽容」那条教训的**同族**：那次是 insertBefore 宽容，这次是根本没有样式层。
+     ⇒ 用 `!important` 把话说死（普通作者样式压不过它），三类可折叠元素一起收进来。 */
+  .d-row[hidden], .d-bar[hidden], .d-gapbody[hidden], .d-band[hidden] { display: none !important; }
+  .d-row > .ln {
+    flex: 0 0 auto; width: 5ch; text-align: right;
+    padding: 0 6px 0 0; opacity: .45; user-select: none;
+  }
+  .d-row > .tx { flex: 1 1 auto; white-space: pre-wrap; word-break: break-word; padding-right: 10px; }
+  .d-add { background: rgba(80,190,110,.14); }
+  .d-add > .tx { color: #9fdca8; }
+  .d-del { background: rgba(224,112,112,.14); }
+  .d-del > .tx { color: #e9a0a0; }
+  .d-hunk > .tx { color: #8fb8ff; opacity: .85; }
+  .d-meta > .tx { color: #b9a2e0; opacity: .8; }
+  .d-ctx > .tx { opacity: .75; }
+  /* ★★★★★★ 2026-09-24【新增：收纳条 —— 用户："2.差异里面的收纳与展开按钮去哪了"】
+     ⚠ 这一节**只作用于新元素**（.d-band / .d-bar / .d-gapbody），上面那些现有规则**一个字没动**：
+       收纳条自己就是一行 `.d-row`（两列空 `.ln` ＋ 一格 `.tx`）⇒ 文字正好落在**正文列**上，
+       与上下正文行同一套列宽（不是另立一套表格形状）。
+     用户定版（2026-09-24）："差异页现在的样式我还挺喜欢的，就是功能少了展开与收纳" ⇒
+       这里只补"折起来 / 点开看"这两件事，不引入源页那套 .patch/.band/.bar 样式。 */
+  .d-band { display: block; }
+  .d-bar { position: relative; cursor: pointer; user-select: none; }
+  /* 左边那条竖线**做满整行**（top:0;bottom:0）—— 它是"这一行能点"的信号。
+     源实现里原来是上下各缩 3px，看着像小短棍，用户问过"我按钮去哪了？"。
+     ⚠ 落在第 1 列那个空 .ln 里（left:3px），不压任何行号（行号右对齐、右边留 6px）。 */
+  .d-bar::before {
+    content: ''; position: absolute; left: 3px; top: 0; bottom: 0; width: 4px;
+    border-radius: 2px; background: #ff5f56; opacity: .9;
+  }
+  /* 收着＝红（.d-bar）／展开＝绿（.d-bar.open）；文字的颜色跟着状态走。 */
+  .d-bar > .tx { color: #ff9a94; font-size: 11.5px; }
+  .d-bar.open > .tx { color: #7dd87d; }
+  .d-bar.open::before { background: #7dd87d; }
+  .d-bar:hover > .tx { text-decoration: underline; }
+  .d-bar:hover::before { box-shadow: 0 0 0 3px rgba(255,95,86,.18); }
+  .d-bar.open:hover::before { box-shadow: 0 0 0 3px rgba(125,216,125,.16); }
+  /* 展开出来的那几行：与普通行**同一套 .d-row / .ln / .tx**（所以行号天然同列）——
+     这里**一个字的内边距都不加**（源文件那次"展开后行号错位"的真因就是多补了一层 7px 缩进）。 */
+  .d-gapbody > .d-row > .tx { opacity: .55; }
+</style>
+</head>
+<body>
+  <div id="bar">
+    <span id="title">hitOpt · 记录</span>
+    <span id="sub"></span>
+    <a id="raw" href="#" target="_blank" rel="noopener">原始 JSON↗</a>
+  </div>
+  <div id="msg" class="dim">正在载入…</div>
+  <pre id="body" hidden></pre>
+  <div id="omit" hidden></div>
+  <div id="taillabel" hidden></div>
+  <pre id="tail" hidden></pre>
+  <div id="morewrap"><button id="more" type="button" hidden>继续读下一段</button></div>
+  <div id="diff" hidden></div>
+  <script type="module" src="view.js"></script>
+</body>
+</html>

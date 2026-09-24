@@ -1,0 +1,16 @@
+# ⛔ 运行时数据 —— 一个字节都不许进仓库
+# 服务端插件跑起来会在**它自己的目录**里生成这些（里面是你自己的聊天正文与 API 请求/响应原文，
+# 实测一台机器上 _gitlog 2.8 GB / captures 1.4 GB）。
+#
+# ⚠ 这份是**前端仓库**的 .gitignore：前端仓库里只有代码，本来不该有这些。
+#   真正会生成它们的是「服务端插件目录」，那份闸门在 server/.gitignore。
+_gitlog/
+_tokcache/
+_errlog/
+_tmp/
+captures/
+_retired-*/
+
+.DS_Store
+Thumbs.db
+node_modules/

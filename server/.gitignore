@@ -1,0 +1,21 @@
+# ⛔ 这个目录会被整体部署成 `<酒馆>/plugins/hitopt-git/`
+#
+# 部署之后，插件**会在这个目录里生成运行时数据**：
+#   _gitlog/     每一轮的记录（聊天仓库，里面是你的聊天正文）
+#   captures/    抓包落下的真出网原文与官方返回
+#   _tokcache/   分词结果缓存
+#   _errlog/     插件自己的异常日志
+#
+# ⇒ 这些**一个都不许进 git**（私密 + 体积巨大）。如果你把整个插件目录当仓库在用，
+#   这份 .gitignore 就是那道闸门。
+_gitlog/
+_tokcache/
+_errlog/
+_tmp/
+captures/
+_retired-*/
+
+*.log
+.DS_Store
+Thumbs.db
+node_modules/

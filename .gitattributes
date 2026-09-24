@@ -1,0 +1,16 @@
+# 行尾口径 —— 与本项目「LF-only」的纪律保持一致：
+# 仓库里**一律存 LF**，谁 clone 都一样；否则 Windows 上 core.autocrlf=true 的人
+# 拿到的是 CRLF，而作者验过的字节是 LF ⇒「我这儿好的，他那儿不一样」这类问题最难查。
+* text=auto eol=lf
+
+# Windows 批处理反过来必须 CRLF（cmd 解析 .bat 时对 LF 不总是友好）
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制，别做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
